@@ -1,0 +1,402 @@
+MLB Contract Investigation
+Costas Tzoumas
+
+Install Packages
+```{r}
+#install.packages("tidyverse")
+library(tidyverse)
+#install.packages("readxl")
+library(readxl)
+```
+
+Load In The Data 
+```{r}
+Arb_2024 <- read_excel("MLB-Arbitration 2018-25.xls.xlsx", 
+    sheet = "MLB-2024 Arb by club", skip = 1)
+Arb_2024 <- Arb_2024[-1, ]
+Arb_2023 <- read_excel("MLB-Arbitration 2018-25.xls.xlsx", 
+    sheet = "MLB-2023 Arb by club", skip = 1)
+Arb_2023 <- Arb_2023[-1, ]
+Arb_2022 <- read_excel("MLB-Arbitration 2018-25.xls.xlsx", 
+    sheet = "MLB-2022 Arb by club", skip = 1)
+Arb_2022 <- Arb_2022[-1, ]
+Arb_2021 <- read_excel("MLB-Arbitration 2018-25.xls.xlsx", 
+    sheet = "MLB-2021 Arb by club", skip = 1)
+Arb_2021 <- Arb_2021[-1, ]
+Arb_2020 <- read_excel("MLB-Arbitration 2018-25.xls.xlsx", 
+    sheet = "MLB-2020 Arb by club", skip = 1)
+Arb_2020 <- Arb_2020[-1, ]
+Arb_2019 <- read_excel("MLB-Arbitration 2018-25.xls.xlsx", 
+    sheet = "MLB-2019 Arb by club", skip = 1)
+Arb_2019 <- Arb_2019[-1, ]
+Arb_2018 <- read_excel("MLB-Arbitration 2018-25.xls.xlsx", 
+    sheet = "MLB-2018 Arb by club", skip = 1) 
+Arb_2018 <- Arb_2018[-1, ]
+```
+
+Clean and Merge data into one
+```{r}
+Arb_2024 <- Arb_2024 %>% select(-Estimate) %>% rename(ClubOffer = `Club                 Offer`, Pos = `Pos'n`, WAR = `2023 WARP`, cWAR = `Career WARP`, oldSalary = `2023 Salary`, PlayerReq = `Player Request`, newSalary = `2024 Salary`)
+Arb_2023 <- Arb_2023 %>% select(-Estimate) %>% rename(ClubOffer = `Club                 Offer`, Pos = `Pos'n`, WAR = `2022 WARP`, cWAR = `Career WARP`, oldSalary = `2022 Salary`, PlayerReq = `Player Request`, newSalary = `2023 Salary`)
+Arb_2022 <- Arb_2022 %>% select(-Estimate) %>% rename(ClubOffer = `Club                 Offer`, Pos = `Pos'n`, WAR = `2021 WARP`, cWAR = `Career WARP`, oldSalary = `2021 Salary`, PlayerReq = `Player Request`, newSalary = `2022 Salary`)
+Arb_2021 <- Arb_2021 %>% select(-.) %>% rename(ClubOffer = `Club                 Offer`, Pos = `Pos'n`, WAR = `2020 WARP`, cWAR = `Career WARP`, oldSalary = `2020 Salary`, PlayerReq = `Player Request`, newSalary = `2021 Salary`)
+Arb_2020 <- Arb_2020 %>% select(-.) %>% rename(ClubOffer = `Club                 Offer`, Pos = `Pos'n`, WAR = `2019 WARP`, cWAR = `Career WARP`, oldSalary = `2019 Salary`, PlayerReq = `Player Request`, newSalary = `2020 Salary`)
+Arb_2019 <- Arb_2019 %>% select(-.) %>% rename(ClubOffer = `Club                 Offer`, Pos = `Pos'n`, WAR = `2018 WARP`, cWAR = `Career WARP`, oldSalary = `2018 Salary`, PlayerReq = `Player Request`, newSalary = `2019 Salary`)
+Arb_2018 <- Arb_2018 %>% rename(ClubOffer = `Club         Offer`, Pos = `Pos'n`, WAR = `2017 WARP`, cWAR = `Career WARP`, oldSalary = `2017 Salary`, PlayerReq = `Player Request`, newSalary = `2018 Salary`)
+Arb_data <- rbind(Arb_2024, Arb_2023, Arb_2022, Arb_2021, Arb_2020, Arb_2019, Arb_2018)
+luxurytax <- data.frame(
+  Season = 2018:2024,
+  luxurytax = c(197000000, 206000000, 208000000, 210000000, 230000000, 233000000, 237000000)
+)
+
+Arb_data <- merge(Arb_data, luxurytax, by = "Season")%>%
+  rename(
+    WARP = WAR,
+    cWARP = cWAR
+  )
+```
+
+```{r}
+#clean each variable
+#position
+Arb_data$Pos <- trimws(Arb_data$Pos)
+Arb_data <- Arb_data %>% mutate(Pos = recode(Pos,
+                                       "ss-3b" = "inf",
+                      "1b-of" = "cinf/of",
+                      "3b-1b" = "inf",
+                      "of-3b" = "cinf/of",
+                      "lf-3b" = "cinf/of",
+                      "2b-ss" = "minf",
+                      "inf-of" = "util",
+                      "cf-rf" = "of",
+                      "2b-of" = "util",
+                      "dh-1b" = "dh/cinf",
+                      "dh-of" = "of/dh",
+                      "1b-rf" = "cinf/of",
+                      "lf-1b" = "cinf/of",
+                      "ss-of" = "util",
+                      "rf-1b" = "cinf/of",
+                      "3b-2b" = "inf",
+                      "lf-rhp" = "twoway",
+                      "c-lf" = "util", 
+                      "1b-3b" = "inf",
+                      "2b-3b" = "inf",
+                      "rf-dh" = "of/dh",
+                      "lf-rf" = "of",
+                      "3b-lf" = "cinf/of",
+                      "ss-2b" = "minf",
+                      "1b-dh" = "1b",
+                      "rhp-of" = "twoway",
+                      "cf-lf" = "of",
+                      "3b-rf" = "cinf/of",
+                      "dh-rf" = "of/dh",
+                      "1b-lf" = "cinf/of",
+                      "cf-2b" = "util",
+                      "lf-2b" = "util",
+                      "lf-2b" = "of",
+                      "3b-dh" = "3b",
+                      "lf-c" = "util",
+                      "dh-c" = "c",
+                      "lf-dh" = "of/dh",
+                      "lf-cf" = "of",
+                      "lhp" = "rp",
+                      "rhp" = "rp",
+                      "lhp-s" = "sp",
+                      "rhp-s" = "sp",
+                      "lhp-c" = "cp",
+                      "rhp-c" = "cp"))
+```
+
+```{r}
+#recode WAR to get rid of any null values and be a numeric var
+Arb_data <- Arb_data %>% filter(!(WARP == "n/a" & WARP == "dnp" & is.na(WARP) & WARP == "-"))
+Arb_data$WARP <- as.numeric(Arb_data$WARP)
+Arb_data <- Arb_data %>% filter(!( is.na(WARP)))
+```
+
+```{r}
+#make cWAR numeric
+Arb_data$cWARP <- as.numeric(Arb_data$cWARP)
+Arb_data$oldSalary <- as.numeric(Arb_data$oldSalary) 
+Arb_data <- Arb_data %>% filter(!( is.na(oldSalary)))
+Arb_data <- Arb_data %>% mutate(newSalary = ifelse(ClubOffer %in% c("outrighted", "non-tendered", "DFA"), 0, newSalary), newSalary =as.numeric(newSalary)) %>%filter(!( is.na(newSalary)))
+```
+
+```{r}
+#create new var
+Arb_data$pofLT <- Arb_data$newSalary/Arb_data$luxurytax
+Arb_data <- Arb_data %>%
+  arrange(Season) %>%
+  mutate(
+    luxurytaxprevious = lag(luxurytax, order_by = Season)
+  )
+Arb_data$pofLTO <- Arb_data$oldSalary/Arb_data$luxurytaxprevious
+```
+
+Now lets load in data on these players from savant 
+```{r}
+positionplayerdata <- read_csv("baseballdatawage.csv")
+
+pitcherdata <- read_csv("pitchingwage.csv")
+```
+
+Reformatting player names so that they match in each data set 
+```{r}
+library(stringi)
+
+positionplayerdata <- positionplayerdata %>% 
+  mutate (
+    Name = trimws(Name),
+    Name = stri_trans_general(Name, "Latin-ASCII"),
+    Name = gsub("\\.", "", Name),
+    Name = gsub("\\-", " ", Name),
+    Name = gsub("\\sJr", "", Name),
+    Name = gsub("\\s[A-Z]\\s", " ", Name)
+    )
+
+pitcherdata <- pitcherdata %>% 
+  mutate (
+    Name = trimws(Name),
+    Name = stri_trans_general(Name, "Latin-ASCII"),
+    Name = gsub("\\.", "", Name),
+    Name = gsub("\\-", " ", Name),
+    Name = gsub("\\sJr", "", Name),
+    Name = gsub("\\s[A-Z]\\s", " ", Name)
+    )
+
+Arb_data <- Arb_data %>% mutate (Player = trimws(Player)) %>%
+  separate(Player, into = c("Last", "First"), sep = ", ", remove = FALSE) %>%
+  mutate(Player = paste(First, Last))%>%
+  select(-First, -Last) %>%
+  mutate(
+    Player = stri_trans_general(Player, "Latin-ASCII"),
+    Player = gsub("\\.", "", Player),
+    Player = gsub("\\-", " ", Player),
+    Player = gsub("\\sJr", "", Player),
+    Player = gsub("\\s[A-Z]\\s", " ", Player),
+    Pos = case_when(
+      Pos == "twoway" & Player == "Michael Lorenzen" ~ "rp",
+      Pos == "twoway" & Player == "Jake Cronenworth" ~ "inf",
+      TRUE ~ Pos
+    ),
+    Player = case_when(
+      Player == "Nicholas Castellanos" ~ "Nick Castellanos",
+      Player == "Javy Baez" ~ "Javier Baez",
+      Player == "Giovanny Urshela" ~ "Gio Urshela",
+      Player == "Zach Britton" ~ "Zack Britton",
+      TRUE ~ Player
+    )
+  )
+
+
+```
+
+
+Join the data sets to create a pitching data set and a position player data set 
+```{r}
+pitchARB <- Arb_data %>% filter(Pos == "sp" | Pos == "rp" | Pos == "cp") %>% rename(Name = Player)
+battARB <- Arb_data %>% filter(Pos != "sp" & Pos != "rp" & Pos != "cp") %>% rename(Name = Player)
+
+battarbDATA <- left_join(battARB, positionplayerdata, by = c("Name", "Season"))%>%filter(!is.na(PA))
+pitcharbDATA <- left_join(pitchARB, pitcherdata, by = c("Name", "Season"))%>%filter(!is.na(G))
+
+na <- battarbDATA %>% filter(is.na(battarbDATA$PA))
+naP <- pitcharbDATA %>% filter(is.na(pitcharbDATA$G))
+
+```
+
+
+Things to know:
+outrighted means to be sent down to the minors (effectively cut)
+non tendered means that the team never gave the player a contract and he is now a free agent
+REMEMBER FOR OUR DATA WARP = WAR (fix this later)
+
+DATA IS CLEANED NOW WE CAN DO SOME BASIC EXPLORATION
+
+```{r}
+hist(Arb_data$newSalary)
+hist(Arb_data$WARP)
+plot(Arb_data$oldSalary, Arb_data$newSalary)
+plot(Arb_data$MLS, Arb_data$newSalary)
+plot(Arb_data$cWARP, Arb_data$newSalary)
+plot(Arb_data$WARP, Arb_data$newSalary)
+plot(Arb_data$WARP, Arb_data$pofLT)
+hist(log(Arb_data$newSalary)) #data reexpressed as log
+```
+
+Can try different models now...
+
+Logistic Regression with log transformation on the salary
+```{r}
+Arb_data$logNewSal <- log(Arb_data$newSalary + 1)
+lmodel <- lm(data = Arb_data, logNewSal ~ WARP + cWARP)
+summary(lmodel)
+```
+
+Position Player Data Models
+```{r}
+#creating a variable to signify if a player got cut or not
+battarbDATA$status <- case_when(
+  battarbDATA$ClubOffer == "outrighted" ~  "Cut/Sent Down",
+  battarbDATA$ClubOffer == "non-tendered" ~ "Cut/Sent Down",
+  battarbDATA$ClubOffer == "exercised option" ~ "Signed",
+  battarbDATA$ClubOffer == "DFA" ~ "Cut/Sent Down",
+  TRUE ~ "Signed"
+)
+
+battarbDATA$status <- as.factor(battarbDATA$status)
+
+#install.packages("caTools")
+library(dplyr)
+library(caTools)
+set.seed(123)
+split <- sample.split(battarbDATA, SplitRatio = 0.7)
+battarbDATA$logNewSal <- log(battarbDATA$newSalary + 1) 
+train_bat <- subset(battarbDATA, split == TRUE)
+test_bat <- subset(battarbDATA, split == FALSE)
+```
+
+```{r}
+bat1 <- lm(newSalary ~ cWARP + WAR + Age + oldSalary  , data = train_bat)
+summary(bat1)
+
+pred1 <- predict(bat1, newdata = test_bat)
+
+resid1 <- pred1 - test_bat$newSalary
+
+rmse1 <- sqrt(mean(resid1^2))
+rmse1
+
+bat1preddata <- test_bat %>% mutate(predictedSal = pred1) %>% 
+  mutate(
+    predictedSal = case_when(
+      predictedSal < 0 ~ 0,
+      TRUE ~ predictedSal
+    )
+  )
+
+newrmse1 <- sqrt(mean((bat1preddata$predictedSal - bat1preddata$newSalary)^2))
+newrmse1
+
+library(openxlsx)
+write.xlsx(bat1preddata, "bat1predata.xlsx")
+```
+
+```{r}
+#random forest
+#install.packages("randomForest")
+library(randomForest)
+
+bat2 <- randomForest(newSalary ~ cWARP + WAR + wOBA + Age + oldSalary + status, ntree = 500, data = train_bat)
+
+pred2 <- predict(bat2, newdata = test_bat)
+
+resid2 <- pred2 - test_bat$newSalary
+
+rmse2 <- sqrt(mean(resid2^2))
+rmse2
+
+```
+
+Gonna delete players who got cut 
+```{r}
+train_bat_nocut <- train_bat %>% filter(newSalary != 0)
+test_bat_nocut <- test_bat %>% filter(newSalary != 0)
+```
+
+trying more models with no cuts
+```{r}
+bat3 <- lm(newSalary ~ cWARP + WAR + Age + oldSalary, data = train_bat_nocut)
+summary(bat3)
+
+pred3 <- predict(bat3, newdata = test_bat_nocut)
+
+resid3 <- pred3 - test_bat_nocut$newSalary
+
+rmse3 <- sqrt(mean(resid3^2))
+rmse3
+```
+
+```{r}
+library(randomForest)
+
+bat4 <- randomForest(newSalary ~ cWARP + WAR + Age + oldSalary , ntree = 500, data = train_bat_nocut)
+
+pred4 <- predict(bat4, newdata = test_bat_nocut)
+
+resid4 <- pred4 - test_bat_nocut$newSalary
+
+rmse4 <- sqrt(mean(resid4^2))
+rmse4
+```
+
+Attempting a two model approach 
+```{r}
+#model one to predict whether or not the team will cut the player
+status1 <- glm(status ~ cWARP + WAR + oldSalary +  Age , data = train_bat, family = "binomial")
+summary(status1)
+
+statuspred1 <- predict(status1, newdata = test_bat, type = "response")
+statuspred1 <- ifelse(statuspred1 > 0.5, "Signed", "Cut/Sent Down")
+
+bat5 <- lm(newSalary ~ cWARP + WAR + Age + oldSalary, data = train_bat)
+summary(bat5)
+bat5pred <- predict(bat5, newdata = test_bat)
+
+bat5pred <- ifelse(statuspred1 == "Cut/Sent Down", 0, bat5pred)
+resid5 <- bat5pred - test_bat$newSalary
+rmse5 <- sqrt(mean(resid5^2))
+rmse5
+```
+I like the idea of two models one to predict if the player will get signed one if they won't
+Lets do something about Age though
+
+```{r}
+library(splines)
+status2 <- glm(status ~ cWARP + WAR + oldSalary + ns(Age, df = 3) , data = train_bat, family = "binomial")
+summary(status2)
+
+statuspred2 <- predict(status2, newdata = test_bat, type = "response")
+statuspred2 <- as.factor(ifelse(statuspred2 > 0.5, "Signed", "Cut/Sent Down"))
+sum((statuspred2==test_bat$status)==TRUE)/nrow(test_bat)
+
+bat6 <- lm(newSalary ~ cWARP + WAR + ns(Age, df = 3) + oldSalary, data = train_bat)
+summary(bat6)
+bat6pred <- predict(bat6, newdata = test_bat)
+
+bat6pred <- ifelse(statuspred2 == "Cut/Sent Down", 0, bat6pred)
+resid6 <- bat6pred - test_bat$newSalary
+rmse6 <- sqrt(mean(resid6^2))
+rmse6
+
+library(randomForest)
+bat7 <- randomForest(newSalary ~ cWARP + WAR + Age + oldSalary + HR 
+                     + wOBA + BABIP + AVG + SLG + SB + RBI + R, 
+                     ntree = 500, data = train_bat)
+
+bat7pred <- predict(bat7, newdata = test_bat)
+
+bat7pred <- ifelse(statuspred2 == "Cut/Sent Down", 0, bat7pred)
+resid7 <- bat7pred - test_bat$newSalary
+rmse7 <- sqrt(mean(resid7^2))
+rmse7
+
+test_bat$predSalary <- bat7pred
+write.xlsx(test_bat, "bat7pred.xlsx")
+```
+
+Doing this with Random Forest
+
+
+
+
+
+
+
+
+
+
+
+
+
+

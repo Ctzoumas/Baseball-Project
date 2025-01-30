@@ -1,0 +1,305 @@
+MLB Contract Investigation
+Costas Tzoumas
+
+Install Packages
+```{r}
+#install.packages("tidyverse")
+library(tidyverse)
+#install.packages("readxl")
+library(readxl)
+```
+
+Load in the Data 
+```{r}
+fa2024 <- read_excel("MLB-Free Agency 1991-2025.xls.xlsx", 
+    sheet = "2024", skip = 12)%>%
+  select(c(Player, `Pos'n`, `Old    Club`, `New Club`, Years, Guarantee, AAV))%>%
+  mutate(Season = 2024)
+fa2023 <- read_excel("MLB-Free Agency 1991-2025.xls.xlsx", 
+    sheet = "2023", skip = 12)%>%
+  select(c(Player, `Pos'n`, `Old    Club`, `New Club`, Years, Guarantee, AAV))%>%
+  mutate(Season = 2023)
+fa2022 <- read_excel("MLB-Free Agency 1991-2025.xls.xlsx", 
+    sheet = "2022", skip = 12)%>%
+  select(c(Player, `Pos'n`, `Old    Club`, `New Club`, Years, Guarantee, AAV))%>%
+  mutate(Season = 2022)
+fa2021 <- read_excel("MLB-Free Agency 1991-2025.xls.xlsx", 
+    sheet = "2021", skip = 12)%>%
+  select(c(Player, `Pos'n`, `Old    Club`, `New Club`, Years, Guarantee, AAV))%>%
+  mutate(Season = 2021)
+fa2020 <- read_excel("MLB-Free Agency 1991-2025.xls.xlsx", 
+    sheet = "2020", skip = 12)%>%
+  select(c(Player, `Pos'n`, `Old    Club`, `New Club`, Years, Guarantee, AAV))%>%
+  mutate(Season = 2020)
+fa2019 <- read_excel("MLB-Free Agency 1991-2025.xls.xlsx", 
+    sheet = "2019", skip = 12)%>%
+  select(c(Player, `Pos'n`, `Old    Club`, `New Club`, Years, Guarantee, AAV))%>%
+  mutate(Season = 2019)
+fa2018 <- read_excel("MLB-Free Agency 1991-2025.xls.xlsx", 
+    sheet = "2018", skip = 11)%>%
+  select(c(Player, `Pos'n`, `Old    Club`, `New Club`, Years, Guarantee, AAV))%>%
+  mutate(Season = 2018)
+fadata <- rbind(fa2024,fa2023,fa2021,fa2020,fa2019,fa2018)
+```
+
+clean the names
+```{r}
+fadatav1 <- fadata %>%
+   mutate (Player = trimws(Player)) %>%
+  separate(Player, into = c("Last", "First"), sep = ", ", remove = FALSE) %>%
+  mutate(Player = paste(First, Last))%>%
+  select(-First, -Last) %>%
+  mutate(
+    Player = stri_trans_general(Player, "Latin-ASCII"),
+    Player = gsub("\\.", "", Player),
+    Player = gsub("\\-", " ", Player),
+    Player = gsub("\\sJr", "", Player),
+    Player = gsub("\\s[A-Z]\\s", " ", Player),
+    Pos = recode(`Pos'n`,
+                                       "ss-3b" = "ss",
+                      "1b-of" = "1b",
+                      "3b-1b" = "3b",
+                      "of-3b" = "of",
+                      "lf-3b" = "of",
+                      "2b-ss" = "2b",
+                      "inf-of" = "util",
+                      "cf-rf" = "of",
+                      "2b-of" = "2b",
+                      "dh-1b" = "dh",
+                      "dh-of" = "dh",
+                      "1b-rf" = "1b",
+                      "lf-1b" = "of",
+                      "ss-of" = "ss",
+                      "rf-1b" = "of",
+                      "3b-2b" = "3b",
+                      "lf-rhp" = "twoway",
+                      "c-lf" = "c", 
+                      "1b-3b" = "1b",
+                      "2b-3b" = "2b",
+                      "rf-dh" = "of",
+                      "lf-rf" = "of",
+                      "3b-lf" = "3b",
+                      "ss-2b" = "ss",
+                      "1b-dh" = "1b",
+                      "rhp-of" = "twoway",
+                      "cf-lf" = "of",
+                      "3b-rf" = "3b",
+                      "dh-rf" = "dh",
+                      "1b-lf" = "1b",
+                      "cf-2b" = "of",
+                      "lf-2b" = "of",
+                      "lf-2b" = "of",
+                      "3b-dh" = "3b",
+                      "lf-c" = "of",
+                      "dh-c" = "dh",
+                      "lf-dh" = "of",
+                      "lf-cf" = "of",
+                      "lhp" = "rp",
+                      "rhp" = "rp",
+                      "lhp-s" = "sp",
+                      "rhp-s" = "sp",
+                      "lhp-c" = "cp",
+                      "rhp-c" = "cp",
+                      "dh-lf" = "dh",
+                 "c-dh" = "c",
+                 "dh-3b" = "dh",
+                 "rf-cf" = "of",
+                 "dh-inf" = "dh",
+                 "2b-cf" = "2b",
+                 "rhp-" = "rp",
+                 "c-1b" = "c",
+                 "2b-rf" = "2b",
+                 "3b-ss"  = "3b",
+                 "1b-2b"  = "1b",
+                 "of-dh"  = "of",
+                 "rf-3b"  = "rf",
+                 "1b-c" = "1b")
+    )
+```
+```{r}
+cWARb <- read_csv("batter200-2024.csv")
+cWARbv1 <- cWARb %>%
+  arrange(Name, Season) %>% # Ensure data is sorted by player and year
+  group_by(Name) %>%
+  mutate(cWAR = cumsum(WAR)) 
+
+cWARbv2 <- cWARbv1 %>%
+  group_by(Name) %>%
+  arrange(Name, (Season)) %>%
+  mutate(last2WAR = WAR + lag(WAR, 1))
+
+cWARbvf <- cWARbv2%>%
+  select(c(Name, Season, cWAR, last2WAR)) %>%
+  mutate (
+    Name = trimws(Name),
+    Name = stri_trans_general(Name, "Latin-ASCII"),
+    Name = gsub("\\.", "", Name),
+    Name = gsub("\\-", " ", Name),
+    Name = gsub("\\sJr", "", Name),
+    Name = gsub("\\s[A-Z]\\s", " ", Name)
+    )
+
+CWARp <- read_csv("pitch2000-2024.csv") 
+
+cWARpv1 <- CWARp %>%
+  arrange(Name, Season) %>% # Ensure data is sorted by player and year
+  group_by(Name) %>%
+  mutate(cWAR = cumsum(WAR))
+
+cWARpv2 <- cWARpv1 %>%
+  group_by(Name) %>%
+  arrange(Name, (Season)) %>%
+  mutate(last2WAR = WAR + lag(WAR, 1))
+
+cWARpvf <- cWARpv2 %>%
+  select(c(Name, Season, cWAR, last2WAR)) %>%
+  mutate (
+    Name = trimws(Name),
+    Name = stri_trans_general(Name, "Latin-ASCII"),
+    Name = gsub("\\.", "", Name),
+    Name = gsub("\\-", " ", Name),
+    Name = gsub("\\sJr", "", Name),
+    Name = gsub("\\s[A-Z]\\s", " ", Name)
+    )
+
+positionplayerdata <- left_join(positionplayerdata, cWARbvf, by = c("Name", "Season"))
+pitcherdata <- left_join(pitcherdata, cWARpvf, by = c("Name", "Season"))
+```
+
+join the data sets
+``` {r}
+pitchfa <- fadatav1 %>% filter(Pos == "sp" | Pos == "rp" | Pos == "cp") %>% rename(Name = Player) %>% filter(Season >= 2018)
+battfa <- fadatav1 %>% filter(Pos != "sp" & Pos != "rp" & Pos != "cp") %>% rename(Name = Player)%>% filter(Season >= 2018)
+
+battfaDATA <- left_join(battfa, positionplayerdata, by = c("Name", "Season"))%>%filter(!is.na(PA))
+pitchfaDATA <- left_join(pitchfa, pitcherdata, by = c("Name", "Season"))%>%filter(!is.na(G))
+
+na <- battfaDATA %>% filter(is.na(battfaDATA$PA))
+naP <- pitchfaDATA %>% filter(is.na(pitchfaDATA$G))
+
+battfaDATA <- battfaDATA %>% filter(!is.na(AAV))
+pitchfaDATA <- pitchfaDATA %>% filter(!is.na(AAV))
+```
+
+
+```{r}
+AlexBregman <- positionplayerdata %>% filter(Name == "Alex Bregman" & Season == 2024) %>% mutate(Pos = "3b")
+JuanSoto <- positionplayerdata %>% filter(Name == "Juan Soto" & Season == 2024) %>% mutate(Pos = "of")
+Ohtani <- positionplayerdata %>% filter(Name == "Shohei Ohtani" & Season == 2024) %>% mutate(Pos = "dh")
+
+maxfried <- pitcherdata %>% filter(Name == "Max Fried" & Season == 2024) %>% mutate(Pos = "sp")
+```
+Time to do some regression 
+
+```{r}
+#build a function for RMSE
+rmse <- function(actual, predicted) {
+  sqrt(mean((actual - predicted)^2))
+}
+```
+
+```{r}
+library(caTools)
+set.seed(123)
+split <- sample.split(battfaDATA$WAR, SplitRatio = 0.7)
+train_batfa <- subset(battfaDATA, split == TRUE)
+test_batfa <- subset(battfaDATA, split == FALSE)
+
+set.seed(123)
+split <- sample.split(pitchfaDATA$WAR, SplitRatio = 0.7)
+train_pitchfa <- subset(pitchfaDATA, split == TRUE)
+test_pitchfa <- subset(pitchfaDATA, split == FALSE)
+```
+
+```{r}
+#batting model
+library(splines)
+multlm1 <- lm(cbind(Years, AAV) ~ ns(Age, df = 3) + WAR + `last2WAR` + cWAR + Season + Pos, data = train_batfa)
+summary(multlm1)
+
+multpred1 <- predict(multlm1, test_batfa)
+
+rmse(round(test_batfa$Years, 0), round(multpred1[,1],0))
+rmse(test_batfa$AAV, multpred1[,2])
+
+test_batfa$predyears <- multpred1[,1]
+test_batfa$predAAV <- multpred1[,2]
+write.xlsx(test_batfa, "multpred1.xlsx")
+
+bregpred1 <- predict(multlm1, AlexBregman)
+bregpred1
+
+sotopred1 <- predict(multlm1, JuanSoto)
+sotopred1
+
+```
+
+```{r}
+#pitching model
+library(splines)
+multlm2 <- lm(cbind(Years, AAV) ~ ns(Age, df = 3) + WAR + `last2WAR` + cWAR + Season + Pos, data = train_pitchfa)
+summary(multlm2)
+
+multpred2 <- predict(multlm2, test_pitchfa)
+
+rmse(round(test_pitchfa$Years, 0), round(multpred2[,1],0))
+rmse(test_pitchfa$AAV, multpred2[,2])
+
+test_pitchfa$predyears <- multpred2[,1]
+test_pitchfa$predAAV <- multpred2[,2]
+write.xlsx(test_pitchfa, "multpred2.xlsx")
+
+maxfriedpred1 <- predict(multlm2, maxfried)
+maxfriedpred1
+```
+
+
+```{r}
+#lets try random forest
+library(splines)
+library(randomForest)
+multrf1 <- randomForest(data = train_batfa, AAV ~ Age + WAR + `last2WAR` + cWAR + G + 
+                          PA + HR + RBI + R + SB + AVG + 
+                           OBP + SLG + ISO + BABIP + wOBA + 
+                           + BsR + Def + Off + Pos, importance = TRUE)
+varImpPlot(multrf1)
+AAVpred <- predict(multrf1, test_batfa)
+rmse(test_batfa$AAV, AAVpred)
+
+test_batfa$predAAVrf <- AAVpred
+write.xlsx(test_batfa, "multrf1.xlsx")
+
+bregpred2 <- predict(multrf1, AlexBregman)
+bregpred2
+```
+
+FULL FA POSITION PLAYER MODEL
+```{r}
+library(splines)
+fullbatlm <- lm(cbind(Years, AAV) ~ ns(Age, df = 3) + WAR + `last2WAR` + cWAR + Season + Pos, data = battfaDATA)
+summary(fullbatlm)
+
+bregpred3 <- predict(fullbatlm, AlexBregman, interval = "prediction", level = 0.95)
+bregpred3
+```
+
+```{r}
+splitteamsbat<- read_csv("battingsplitteams20182024.csv") %>% 
+  mutate (
+    Name = trimws(Name),
+    Name = stri_trans_general(Name, "Latin-ASCII"),
+    Name = gsub("\\.", "", Name),
+    Name = gsub("\\-", " ", Name),
+    Name = gsub("\\sJr", "", Name),
+    Name = gsub("\\s[A-Z]\\s", " ", Name)
+    )
+splitteamsbat <- left_join(splitteamsbat, cWARbvf, by = c("Name", "Season"))
+
+splitteamsbat <- splitteamsbat %>%
+  mutate(Team = trimws(Team), Season = as.numeric(Season))
+```
+
+
+
+
+
